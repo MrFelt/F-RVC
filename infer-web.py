@@ -109,30 +109,10 @@ if torch.cuda.is_available() or ngpu != 0:
             )
 if if_gpu_ok and len(gpu_infos) > 0:
     gpu_info = "\n".join(gpu_infos)
-
-    # Get the minimum memory from the list 'mem'
-    min_mem = min(mem)  # Assuming 'mem' is a list of VRAM sizes
-
-    # New logic to set default_batch_size based on minimum VRAM
-    if min_mem >= 20:
-        default_batch_size = 16
-    elif min_mem >= 16:
-        default_batch_size = 12
-    elif min_mem >= 12:
-        default_batch_size = 10
-    elif min_mem >= 8:
-        default_batch_size = 8
-    elif min_mem >= 6:
-        default_batch_size = 6
-    elif min_mem >= 4:
-        default_batch_size = 4
-    else:
-        default_batch_size = 1  # or another default value for less than 4 GB
-
+    default_batch_size = min(mem) // 2
 else:
     gpu_info = i18n("很遗憾您这没有能用的显卡来支持您训练")
-    default_batch_size = 1  # If no supported GPU is found
-
+    default_batch_size = 1
 gpus = "-".join([i[0] for i in gpu_infos])
 
 
@@ -831,7 +811,7 @@ with gr.Blocks(title="RVC WebUI") as app:
                             choices=["pm", "harvest", "crepe", "rmvpe"]
                             if config.dml == False
                             else ["pm", "harvest", "rmvpe"],
-                            value="rmvpe",
+                            value="pm",
                             interactive=True,
                         )
                         filter_radius0 = gr.Slider(
@@ -868,7 +848,7 @@ with gr.Blocks(title="RVC WebUI") as app:
                             minimum=0,
                             maximum=1,
                             label=i18n("检索特征占比"),
-                            value=0.4,
+                            value=0.75,
                             interactive=True,
                         )
                     with gr.Column():
@@ -884,7 +864,7 @@ with gr.Blocks(title="RVC WebUI") as app:
                             minimum=0,
                             maximum=1,
                             label=i18n("输入源音量包络替换输出音量包络融合比例，越靠近1越使用输出包络"),
-                            value=0.1,
+                            value=0.25,
                             interactive=True,
                         )
                         protect0 = gr.Slider(
@@ -893,7 +873,7 @@ with gr.Blocks(title="RVC WebUI") as app:
                             label=i18n(
                                 "保护清辅音和呼吸声，防止电音撕裂等artifact，拉满0.5不开启，调低加大保护力度但可能降低索引效果"
                             ),
-                            value=0.1,
+                            value=0.33,
                             step=0.01,
                             interactive=True,
                         )
@@ -939,7 +919,7 @@ with gr.Blocks(title="RVC WebUI") as app:
                             choices=["pm", "harvest", "crepe", "rmvpe"]
                             if config.dml == False
                             else ["pm", "harvest", "rmvpe"],
-                            value="rmvpe",
+                            value="pm",
                             interactive=True,
                         )
                         filter_radius1 = gr.Slider(
@@ -992,7 +972,7 @@ with gr.Blocks(title="RVC WebUI") as app:
                             minimum=0,
                             maximum=1,
                             label=i18n("输入源音量包络替换输出音量包络融合比例，越靠近1越使用输出包络"),
-                            value=0.1,
+                            value=1,
                             interactive=True,
                         )
                         protect1 = gr.Slider(
@@ -1001,7 +981,7 @@ with gr.Blocks(title="RVC WebUI") as app:
                             label=i18n(
                                 "保护清辅音和呼吸声，防止电音撕裂等artifact，拉满0.5不开启，调低加大保护力度但可能降低索引效果"
                             ),
-                            value=0.1,
+                            value=0.33,
                             step=0.01,
                             interactive=True,
                         )
@@ -1136,7 +1116,7 @@ with gr.Blocks(title="RVC WebUI") as app:
                     maximum=config.n_cpu,
                     step=1,
                     label=i18n("提取音高和处理数据使用的CPU进程数"),
-                    value=int(np.ceil(config.n_cpu * 0.4)),
+                    value=int(np.ceil(config.n_cpu / 1.5)),
                     interactive=True,
                 )
             with gr.Group():  # 暂时单人的, 后面支持最多4人的#数据处理
@@ -1191,7 +1171,7 @@ with gr.Blocks(title="RVC WebUI") as app:
                             label=i18n(
                                 "rmvpe卡号配置：以-分隔输入使用的不同进程卡号,例如0-0-1使用在卡0上跑2个进程并在卡1上跑1个进程"
                             ),
-                            value="%s-%s-%s" % (gpus, gpus, gpus),
+                            value="%s-%s" % (gpus, gpus),
                             interactive=True,
                             visible=F0GPUVisible,
                         )
@@ -1221,7 +1201,7 @@ with gr.Blocks(title="RVC WebUI") as app:
                 with gr.Row():
                     save_epoch10 = gr.Slider(
                         minimum=1,
-                        maximum=100,
+                        maximum=50,
                         step=1,
                         label=i18n("保存频率save_every_epoch"),
                         value=5,
@@ -1229,10 +1209,10 @@ with gr.Blocks(title="RVC WebUI") as app:
                     )
                     total_epoch11 = gr.Slider(
                         minimum=2,
-                        maximum=10000,
+                        maximum=1000,
                         step=1,
                         label=i18n("总训练轮数total_epoch"),
-                        value=500,
+                        value=20,
                         interactive=True,
                     )
                     batch_size12 = gr.Slider(
@@ -1254,13 +1234,13 @@ with gr.Blocks(title="RVC WebUI") as app:
                             "是否缓存所有训练集至显存. 10min以下小数据可缓存以加速训练, 大数据缓存会炸显存也加不了多少速"
                         ),
                         choices=[i18n("是"), i18n("否")],
-                        value=i18n("是"),
+                        value=i18n("否"),
                         interactive=True,
                     )
                     if_save_every_weights18 = gr.Radio(
                         label=i18n("是否在每次保存时间点将最终小模型保存至weights文件夹"),
                         choices=[i18n("是"), i18n("否")],
-                        value=i18n("是"),
+                        value=i18n("否"),
                         interactive=True,
                     )
                 with gr.Row():
