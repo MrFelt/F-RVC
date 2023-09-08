@@ -49,7 +49,7 @@ class PreProcess:
         self.sr = sr
         self.bh, self.ah = signal.butter(N=5, Wn=48, btype="high", fs=self.sr)
         self.per = per
-        self.overlap = 0.0
+        self.overlap = 0.3
         self.tail = self.per + self.overlap
         self.max = 0.9
         self.alpha = 0.75
